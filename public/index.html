@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Course Institute</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>📚 Course Institute</h1>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Course Name</th>
+          <th>Description</th>
+          <th>Duration</th>
+        </tr>
+      </thead>
+      <tbody id="course-table-body">
+        <!-- Data will be filled dynamically -->
+      </tbody>
+    </table>
+
+    <!-- Hidden Form -->
+    <div id="form-container" class="hidden">
+      <h2>Add New Course</h2>
+      <form id="course-form">
+        <input type="text" id="name" placeholder="Course Name" required><br>
+        <input type="text" id="description" placeholder="Description"><br>
+        <input type="text" id="duration" placeholder="Duration"><br>
+        <button type="submit">Submit</button>
+      </form>
+    </div>
+
+    <!-- Floating Add Button -->
+    <button class="add-button" id="add-course-btn">+</button>
+  </div>
+
+  <script>
+    async function fetchCourses() {
+      const res = await fetch('/api/courses');
+      const courses = await res.json();
+      const tbody = document.getElementById('course-table-body');
+      tbody.innerHTML = '';
+
+      courses.forEach(course => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${course.name}</td>
+          <td>${course.description}</td>
+          <td>${course.duration}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    document.getElementById('add-course-btn').addEventListener('click', () => {
+      document.getElementById('form-container').classList.toggle('hidden');
+    });
+
+    document.getElementById('course-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('name').value;
+      const description = document.getElementById('description').value;
+      const duration = document.getElementById('duration').value;
+      
+      await fetch('/api/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description, duration })
+      });
+
+      document.getElementById('course-form').reset();
+      document.getElementById('form-container').classList.add('hidden');
+      fetchCourses();
+    });
+
+    fetchCourses();
+  </script>
+</body>
+</html>
