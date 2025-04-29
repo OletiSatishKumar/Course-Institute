@@ -37,7 +37,7 @@ pipeline {
 
         stage('Test (Currently Skipped)') {
             steps {
-                echo "🧪 Skipping Tests - No test cases implemented yet."
+                echo '🧪 Skipping Tests - No test cases implemented yet.'
             }
         }
 
@@ -68,9 +68,23 @@ pipeline {
             steps {
                 echo "☁️ Uploading ${ARTIFACT_NAME} to S3 bucket ${S3_BUCKET}..."
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
-                    bat """
+                    bat '''
                     aws s3 cp %ARTIFACT_NAME% s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME%
-                    """
+                    '''
+                }
+            }
+        }
+
+        stage('Cleanup Old Artifacts in S3') {
+            steps {
+                echo "🧹 Cleaning old artifacts in S3 (keep latest 5)..."
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
+                    bat '''
+                    for /f "skip=5 tokens=1,* delims=," %%a in ('aws s3api list-objects-v2 --bucket %S3_BUCKET% --prefix %S3_PATH% --query "reverse(sort_by(Contents,&LastModified))[*].Key" --output text') do (
+                        echo Deleting: %%a
+                        aws s3 rm s3://%S3_BUCKET%/%%a
+                    )
+                    '''
                 }
             }
         }
@@ -78,22 +92,12 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
-
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
-                    bat """
+                    bat '''
                     echo Connecting to EC2 and deploying the app...
 
-                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% ^
-                    "aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ &&
-                     unzip -o ~/%ARTIFACT_NAME% -d ~/app &&
-                     cd ~/app &&
-                     if ! command -v node > /dev/null; then
-                         curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - &&
-                         sudo yum install -y nodejs
-                     fi &&
-                     npm install &&
-                     nohup npm start > app.log 2>&1 &"
-                    """
+                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ && unzip -o ~/%ARTIFACT_NAME% -d ~/app && cd ~/app && if ! command -v node > /dev/null; then curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && sudo yum install -y nodejs; fi && npm install && nohup npm start > app.log 2>&1 &"
+                    '''
                 }
             }
         }
@@ -107,7 +111,7 @@ pipeline {
             echo "❌ CI Pipeline failed for ${APP_NAME}."
         }
         always {
-            echo "📦 Pipeline execution finished."
+            echo '📦 Pipeline execution finished.'
         }
     }
 }
