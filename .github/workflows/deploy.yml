@@ -2,33 +2,68 @@ name: Deploy Node.js App to EC2
 
 on:
   push:
-    branches: [ master ]
+    branches: [master]  # or your deployment branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      EC2_USER: ec2-user
+      EC2_HOST: 51.21.132.194
+      EC2_KEY: ${{ secrets.EC2_KEY }}
+      S3_BUCKET: your-s3-bucket-name
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Zip project
-      run: zip -r build.zip . -x ".git/*" "node_modules/*" "*.pem"
+      - name: Zip the app
+        run: zip -r build.zip . -x "*.git*" "node_modules/*" "*.github/*"
 
-    - name: Decode SSH key
-      run: |
-        echo "${{ secrets.EC2_KEY }}" | base64 -d > ec2_key.pem
-        chmod 600 ec2_key.pem
+      - name: Save build.zip as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: build.zip
 
-    - name: Copy files to EC2
-      run: |
-        scp -i ec2_key.pem -o StrictHostKeyChecking=no build.zip ec2-user@51.21.132.194:/home/ec2-user/
+      - name: Decode PEM key
+        run: |
+          echo "${EC2_KEY}" | base64 -d > ec2_key.pem
+          chmod 600 ec2_key.pem
 
-    - name: SSH and deploy
-      run: |
-        ssh -i ec2_key.pem -o StrictHostKeyChecking=no ec2-user@51.21.132.194 << 'EOF'
-          unzip -o build.zip -d app
-          cd app
-          npm install
-          pm2 restart all || pm2 start index.js --name course-institute
-        EOF
+      - name: Copy build.zip to EC2
+        run: |
+          scp -i ec2_key.pem -o StrictHostKeyChecking=no build.zip $EC2_USER@$EC2_HOST:/home/$EC2_USER/
+
+      - name: Deploy over SSH
+        run: |
+          ssh -i ec2_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
+            unzip -o build.zip -d app
+            cd app
+            npm install
+            pm2 restart all || pm2 start server.js --name course-institute
+          EOF
+
+      - name: Upload build.zip to S3
+        uses: jakejarvis/s3-sync-action@master
+        with:
+          args: --acl private --follow-symlinks
+        env:
+          AWS_S3_BUCKET: ${{ env.S3_BUCKET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ap-south-1  # Change if needed
+          SOURCE_DIR: .
+          DEST_DIR: builds
+
+      - name: Notify on success
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"✅ Deployment to EC2 successful!"}' $SLACK_WEBHOOK
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Deployment to EC2 failed."}' $SLACK_WEBHOOK
