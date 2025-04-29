@@ -8,6 +8,9 @@ pipeline {
         ARTIFACT_NAME = "${APP_NAME}.zip"
         S3_BUCKET = 'myclashofclansbucket'
         S3_PATH = 'artifacts/'
+        EC2_HOST = '51.20.43.166'
+        EC2_USER = 'ec2-user'
+        PRIVATE_KEY_PATH = 'C:/Users/satis/Downloads/Deploy.pem'
     }
 
     triggers {
@@ -67,6 +70,29 @@ pipeline {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
                     bat """
                     aws s3 cp %ARTIFACT_NAME% s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME%
+                    """
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
+
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
+                    bat """
+                    echo Connecting to EC2 and deploying the app...
+
+                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% ^
+                    "aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ &&
+                     unzip -o ~/%ARTIFACT_NAME% -d ~/app &&
+                     cd ~/app &&
+                     if ! command -v node > /dev/null; then
+                         curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - &&
+                         sudo yum install -y nodejs
+                     fi &&
+                     npm install &&
+                     nohup npm start > app.log 2>&1 &"
                     """
                 }
             }
