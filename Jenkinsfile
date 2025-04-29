@@ -15,9 +15,6 @@ pipeline {
     }
 
     stages {
-        /* ======================
-           🛠️ Continuous Integration (CI)
-           ====================== */
         stage('Checkout Code') {
             steps {
                 echo "🔄 Checking out code from ${GIT_REPO} (branch: ${GIT_BRANCH})"
@@ -55,7 +52,7 @@ pipeline {
                 rem Copy all files to build folder
                 for %%F in (*) do copy "%%F" "build\\"
 
-                rem Delete old artifact if exists
+                rem Remove existing zip file if present
                 if exist %ARTIFACT_NAME% del %ARTIFACT_NAME%
 
                 rem Create ZIP artifact
@@ -64,15 +61,14 @@ pipeline {
             }
         }
 
-        /* ======================
-           🚀 Push to S3
-           ====================== */
         stage('Upload Artifact to S3') {
             steps {
                 echo "☁️ Uploading ${ARTIFACT_NAME} to S3 bucket ${S3_BUCKET}..."
-                bat """
-                aws s3 cp %ARTIFACT_NAME% s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME%
-                """
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
+                    bat """
+                    aws s3 cp %ARTIFACT_NAME% s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME%
+                    """
+                }
             }
         }
     }
