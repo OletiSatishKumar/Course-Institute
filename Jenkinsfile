@@ -91,9 +91,9 @@ pipeline {
 
                         cd ~/app
 
-                        echo '📦 Checking and installing Node.js v22 if not installed...'
+                        echo '📦 Checking and installing Node.js if not installed...'
                         if ! command -v node > /dev/null; then
-                            curl -sL https://rpm.nodesource.com/setup_22.x | sudo bash - &&
+                            curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - &&
                             sudo yum install -y nodejs;
                         fi
 
