@@ -18,30 +18,32 @@ pipeline {
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('🔄 Checkout Code') {
             steps {
                 echo "🔄 Checking out code from ${GIT_REPO} (branch: ${GIT_BRANCH})"
                 git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
             }
         }
 
-        stage('Install Dependencies') {
+        stage('🔧 Install Dependencies') {
             steps {
                 echo "🔧 Installing Node.js Dependencies for ${APP_NAME}..."
                 bat '''
-                echo Installing dependencies...
+                echo Checking if Node.js is installed...
+                node -v || (curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && sudo yum install -y nodejs)
+                echo Installing npm dependencies...
                 npm install
                 '''
             }
         }
 
-        stage('Test (Currently Skipped)') {
+        stage('🧪 Test (Currently Skipped)') {
             steps {
                 echo '🧪 Skipping Tests - No test cases implemented yet.'
             }
         }
 
-        stage('Package Artifact') {
+        stage('📦 Package Artifact') {
             steps {
                 echo "📦 Packaging ${APP_NAME} into a ${ARTIFACT_NAME} file..."
                 bat '''
@@ -64,7 +66,7 @@ pipeline {
             }
         }
 
-        stage('Upload Artifact to S3') {
+        stage('☁️ Upload Artifact to S3') {
             steps {
                 echo "☁️ Uploading ${ARTIFACT_NAME} to S3 bucket ${S3_BUCKET}..."
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
@@ -74,14 +76,26 @@ pipeline {
                 }
             }
         }
-        stage('Deploy to EC2') {
+
+        stage('🚀 Deploy to EC2') {
             steps {
-                echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
+                echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST} using PM2..."
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
                     bat '''
                     echo Connecting to EC2 and deploying the app...
 
-                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ && unzip -o ~/%ARTIFACT_NAME% -d ~/app && cd ~/app && if ! command -v node > /dev/null; then curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && sudo yum install -y nodejs; fi && npm install && nohup npm start > app.log 2>&1 &"
+                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "
+                        aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ &&
+                        unzip -o ~/%ARTIFACT_NAME% -d ~/app &&
+                        cd ~/app &&
+                        if ! command -v node > /dev/null; then curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && sudo yum install -y nodejs; fi &&
+                        if ! command -v pm2 > /dev/null; then sudo npm install -g pm2; fi &&
+                        npm install &&
+                        printf 'PORT=8000\nMONGO_URI=mongodb+srv://SatishKumar:Satish%%40%%401303@cluster0.8h7ix.mongodb.net/courseinstitute\n' > ~/app/.env &&
+                        pm2 delete ${APP_NAME} || true &&
+                        pm2 start npm --name \\"${APP_NAME}\\" -- start &&
+                        pm2 save
+                    "
                     '''
                 }
             }
