@@ -2,7 +2,7 @@ name: Deploy Node.js App to EC2
 
 on:
   push:
-    branches: [master]  # or your deployment branch
+    branches: [master]  # Change if your deployment branch is different
 
 jobs:
   deploy:
@@ -12,7 +12,7 @@ jobs:
       EC2_USER: ec2-user
       EC2_HOST: 51.21.132.194
       EC2_KEY: ${{ secrets.EC2_KEY }}
-      S3_BUCKET: your-s3-bucket-name
+      S3_BUCKET: course-institute-artifacts  # ✅ Replace with your real bucket
       SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
 
     steps:
@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Zip the app
-        run: zip -r build.zip . -x "*.git*" "node_modules/*" "*.github/*"
+        run: zip -r build.zip . -x "*.git*" "node_modules/*" ".github/*"
 
       - name: Save build.zip as artifact
         uses: actions/upload-artifact@v4
@@ -37,13 +37,13 @@ jobs:
         run: |
           scp -i ec2_key.pem -o StrictHostKeyChecking=no build.zip $EC2_USER@$EC2_HOST:/home/$EC2_USER/
 
-      - name: Deploy over SSH
+      - name: Deploy on EC2
         run: |
           ssh -i ec2_key.pem -o StrictHostKeyChecking=no $EC2_USER@$EC2_HOST << 'EOF'
             unzip -o build.zip -d app
             cd app
             npm install
-            pm2 restart all || pm2 start server.js --name course-institute
+            pm2 restart course-institute || pm2 start server.js --name course-institute
           EOF
 
       - name: Upload build.zip to S3
@@ -54,16 +54,18 @@ jobs:
           AWS_S3_BUCKET: ${{ env.S3_BUCKET }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ap-south-1  # Change if needed
+          AWS_REGION: ap-south-1
           SOURCE_DIR: .
           DEST_DIR: builds
 
-      - name: Notify on success
-        if: success()
+      - name: Notify on success (Slack)
+        if: success() && env.SLACK_WEBHOOK != ''
         run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"✅ Deployment to EC2 successful!"}' $SLACK_WEBHOOK
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ Deployment to EC2 successful!"}' $SLACK_WEBHOOK
 
-      - name: Notify on failure
-        if: failure()
+      - name: Notify on failure (Slack)
+        if: failure() && env.SLACK_WEBHOOK != ''
         run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"❌ Deployment to EC2 failed."}' $SLACK_WEBHOOK
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"❌ Deployment to EC2 failed."}' $SLACK_WEBHOOK
