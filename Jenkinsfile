@@ -6,6 +6,8 @@ pipeline {
         GIT_REPO = 'https://github.com/OletiSatishKumar/Course-Institute.git'
         GIT_BRANCH = 'main'
         ARTIFACT_NAME = "${APP_NAME}.zip"
+        S3_BUCKET = 'myclashofclansbucket'    
+        S3_PATH = 'artifacts/'         
     }
 
     triggers {
@@ -57,6 +59,18 @@ pipeline {
                 rem Create ZIP artifact
                 powershell Compress-Archive -Path build\\* -DestinationPath %ARTIFACT_NAME%
                 '''
+            }
+        }
+
+        /* ======================
+           🚀 Push to S3
+           ====================== */
+        stage('Upload Artifact to S3') {
+            steps {
+                echo "☁️ Uploading ${ARTIFACT_NAME} to S3 bucket ${S3_BUCKET}..."
+                bat """
+                aws s3 cp %ARTIFACT_NAME% s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME%
+                """
             }
         }
     }
