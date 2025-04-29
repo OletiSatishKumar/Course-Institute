@@ -79,39 +79,21 @@ pipeline {
         echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
             bat """
-            echo Connecting to EC2 and deploying the app...
-
-            ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "
-                # Download and extract the artifact
-                aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ &&
-                unzip -o ~/%ARTIFACT_NAME% -d ~/app &&
-
-                # Navigate to app directory
-                cd ~/app &&
-
-                # Install Node.js if not installed
-                if ! command -v node > /dev/null; then
-                    curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - &&
-                    sudo yum install -y nodejs
-                fi &&
-
-                # Install dependencies
-                npm install &&
-
-                # Install PM2 if not already
-                if ! command -v pm2 > /dev/null; then
-                    sudo npm install -g pm2
-                fi &&
-
-                # Stop previous PM2 process (if any) and start again
-                pm2 delete ${APP_NAME} || true &&
-                pm2 start index.js --name ${APP_NAME} &&
-                pm2 save
-            "
+            ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% ^
+            "aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ && \
+            unzip -o ~/%ARTIFACT_NAME% -d ~/app && \
+            cd ~/app && \
+            if ! command -v node > /dev/null; then curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && sudo yum install -y nodejs; fi && \
+            npm install && \
+            if ! command -v pm2 > /dev/null; then sudo npm install -g pm2; fi && \
+            pm2 delete ${APP_NAME} || true && \
+            pm2 start index.js --name ${APP_NAME} && \
+            pm2 save"
             """
         }
     }
 }
+
 
     }
 
