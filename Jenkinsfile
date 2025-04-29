@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         APP_NAME = 'course-institute-management'
+        GIT_REPO = 'https://github.com/OletiSatishKumar/Course-Institute.git'
+        GIT_BRANCH = 'main'
     }
 
     triggers {
@@ -13,35 +15,39 @@ pipeline {
         /* ======================
            🛠️ Continuous Integration (CI)
            ====================== */
+        
         stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/OletiSatishKumar/Course-Institute.git'
+                echo "🔄 Checking out code from ${GIT_REPO} (branch: ${GIT_BRANCH})"
+                git branch: "${GIT_BRANCH}", url: "${GIT_REPO}"
             }
         }
 
         stage('Install Dependencies') {
             steps {
+                echo "🔧 Installing Node.js Dependencies for ${APP_NAME}..."
                 sh '''
-                echo "🔧 Installing Node.js Dependencies..."
                 npm install
                 '''
             }
         }
 
-        stage('Optional Test (Skip for Now)') {
+        stage('Test (Currently Skipped)') {
             steps {
-                echo "🧪 Skipping Tests (No tests configured yet)"
+                echo "🧪 Skipping Tests - No test cases implemented yet."
             }
         }
     }
 
     post {
         success {
-            echo '✅ Build stage completed successfully.'
+            echo "✅ CI Pipeline completed successfully for ${APP_NAME}."
         }
         failure {
-            echo '❌ Build stage failed.'
+            echo "❌ CI Pipeline failed for ${APP_NAME}."
+        }
+        always {
+            echo "📦 Pipeline execution finished."
         }
     }
 }
