@@ -10,7 +10,9 @@ pipeline {
     }
 
     stages {
-
+        /* ======================
+           🛠️ Continuous Integration (CI)
+           ====================== */
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
