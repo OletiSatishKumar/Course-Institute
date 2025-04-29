@@ -76,24 +76,23 @@ pipeline {
                     echo Connecting to EC2 and deploying...
 
                     ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% ^
-                    "bash -c '
-                        aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ &&
-                        rm -rf ~/app &&
-                        unzip -o ~/%ARTIFACT_NAME% -d ~/app &&
-                        cd ~/app &&
-                        if ! command -v node > /dev/null; then
-                            curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - &&
-                            sudo yum install -y nodejs
-                        fi &&
-                        if ! command -v pm2 > /dev/null; then sudo npm install -g pm2; fi &&
-                        npm install &&
-                        echo \\"PORT=8000\\" > .env &&
-                        echo \\"MONGO_URI=mongodb+srv://SatishKumar:Satish%40%401303@cluster0.8h7ix.mongodb.net/courseinstitute\\" >> .env &&
-                        pm2 delete ${APP_NAME} || true &&
-                        pm2 start npm --name \\"${APP_NAME}\\" -- start &&
-                        pm2 save
-                    '"
+                    "bash -c \\"aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ && \
+                    rm -rf ~/app && \
+                    unzip -o ~/%ARTIFACT_NAME% -d ~/app && \
+                    cd ~/app && \
+                    if ! command -v node > /dev/null; then \
+                    curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && \
+                    sudo yum install -y nodejs; \
+                    fi && \
+                    if ! command -v pm2 > /dev/null; then sudo npm install -g pm2; fi && \
+                    npm install && \
+                    echo PORT=8000 > .env && \
+                    echo MONGO_URI=mongodb+srv://SatishKumar:Satish%40%401303@cluster0.8h7ix.mongodb.net/courseinstitute >> .env && \
+                    pm2 delete ${APP_NAME} || true && \
+                    pm2 start npm --name \\\\\\"${APP_NAME}\\\\\\" -- start && \
+                    pm2 save\\""
                     """
+
                 }
             }
         }
