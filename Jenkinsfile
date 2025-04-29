@@ -5,7 +5,7 @@ pipeline {
         APP_NAME = 'course-institute-management'
         GIT_REPO = 'https://github.com/OletiSatishKumar/Course-Institute.git'
         GIT_BRANCH = 'main'
-        ARTIFACT_NAME = "${APP_NAME}.tar.gz"
+        ARTIFACT_NAME = "${APP_NAME}.zip"
     }
 
     triggers {
@@ -47,7 +47,14 @@ pipeline {
                 echo Creating artifact...
                 if exist build rmdir /s /q build
                 mkdir build
-                xcopy * build\\ /s /e /y
+
+                rem Copy all folders except 'build' itself
+                for /d %%D in (*) do if /I not "%%D"=="build" xcopy "%%D" "build\\%%D\\" /s /e /y
+
+                rem Copy all files to build folder
+                for %%F in (*) do copy "%%F" "build\\"
+
+                rem Create ZIP artifact
                 powershell Compress-Archive -Path build\\* -DestinationPath %ARTIFACT_NAME%
                 '''
             }
