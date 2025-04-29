@@ -6,8 +6,8 @@ pipeline {
         GIT_REPO = 'https://github.com/OletiSatishKumar/Course-Institute.git'
         GIT_BRANCH = 'main'
         ARTIFACT_NAME = "${APP_NAME}.zip"
-        S3_BUCKET = 'myclashofclansbucket'    
-        S3_PATH = 'artifacts/'         
+        S3_BUCKET = 'myclashofclansbucket'
+        S3_PATH = 'artifacts/'
     }
 
     triggers {
@@ -18,7 +18,6 @@ pipeline {
         /* ======================
            🛠️ Continuous Integration (CI)
            ====================== */
-
         stage('Checkout Code') {
             steps {
                 echo "🔄 Checking out code from ${GIT_REPO} (branch: ${GIT_BRANCH})"
@@ -55,6 +54,9 @@ pipeline {
 
                 rem Copy all files to build folder
                 for %%F in (*) do copy "%%F" "build\\"
+
+                rem Delete old artifact if exists
+                if exist %ARTIFACT_NAME% del %ARTIFACT_NAME%
 
                 rem Create ZIP artifact
                 powershell Compress-Archive -Path build\\* -DestinationPath %ARTIFACT_NAME%
