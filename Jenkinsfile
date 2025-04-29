@@ -8,7 +8,7 @@ pipeline {
         ARTIFACT_NAME = "${APP_NAME}.zip"
         S3_BUCKET = 'myclashofclansbucket'
         S3_PATH = 'artifacts/'
-        EC2_HOST = '51.20.43.166'
+        EC2_HOST = '13.49.23.149'
         EC2_USER = 'ec2-user'
         PRIVATE_KEY_PATH = 'C:/Users/satis/Downloads/Deploy.pem'
     }
