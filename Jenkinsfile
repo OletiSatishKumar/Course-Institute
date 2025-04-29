@@ -76,40 +76,41 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            steps {
-                echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
-                    bat """
-                    echo Connecting to EC2 and deploying the app...
+    steps {
+        echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
+            bat """
+            echo Connecting to EC2 and deploying the app...
 
-                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "
-                        echo '📥 Downloading artifact from S3...'
-                        aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/
+            ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% bash << 'EOF'
+                echo "📥 Downloading artifact from S3..."
+                aws s3 cp s3://${S3_BUCKET}/${S3_PATH}${ARTIFACT_NAME} ~/
 
-                        echo '📂 Unzipping artifact...'
-                        unzip -o ~/%ARTIFACT_NAME% -d ~/app
+                echo "📂 Unzipping artifact..."
+                sudo yum install -y unzip
+                unzip -o ~/${ARTIFACT_NAME} -d ~/app
 
-                        cd ~/app
+                cd ~/app || exit 1
 
-                        echo '📦 Checking and installing Node.js if not installed...'
-                        if ! command -v node > /dev/null; then
-                            curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - &&
-                            sudo yum install -y nodejs;
-                        fi
+                echo "📦 Installing Node.js v22 if not installed..."
+                if ! command -v node > /dev/null; then
+                    curl -sL https://rpm.nodesource.com/setup_22.x | sudo bash -
+                    sudo yum install -y nodejs
+                fi
 
-                        echo '📡 Node.js version:'
-                        node -v
+                echo "📡 Node.js version: $(node -v)"
 
-                        echo '📦 Installing dependencies...'
-                        npm install
+                echo "📦 Installing dependencies..."
+                npm install
 
-                        echo '🚀 Starting application in background...'
-                        nohup npm start > app.log 2>&1 &
-                    "
-                    """
-                }
-            }
+                echo "🚀 Starting application in background..."
+                nohup npm start > app.log 2>&1 &
+            EOF
+            """
         }
+    }
+}
+
     }
 
     post {
