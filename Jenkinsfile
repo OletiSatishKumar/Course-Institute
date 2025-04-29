@@ -15,7 +15,7 @@ pipeline {
         /* ======================
            🛠️ Continuous Integration (CI)
            ====================== */
-        
+
         stage('Checkout Code') {
             steps {
                 echo "🔄 Checking out code from ${GIT_REPO} (branch: ${GIT_BRANCH})"
@@ -26,7 +26,8 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 echo "🔧 Installing Node.js Dependencies for ${APP_NAME}..."
-                sh '''
+                bat '''
+                echo Installing dependencies...
                 npm install
                 '''
             }
