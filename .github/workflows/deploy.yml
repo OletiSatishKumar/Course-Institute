@@ -22,11 +22,11 @@ jobs:
 
     - name: Copy files to EC2
       run: |
-        scp -i ec2_key.pem -o StrictHostKeyChecking=no build.zip ec2-user@<EC2_PUBLIC_IP>:/home/ec2-user/
+        scp -i ec2_key.pem -o StrictHostKeyChecking=no build.zip ec2-user@51.21.132.194:/home/ec2-user/
 
     - name: SSH and deploy
       run: |
-        ssh -i ec2_key.pem -o StrictHostKeyChecking=no ec2-user@<EC2_PUBLIC_IP> << 'EOF'
+        ssh -i ec2_key.pem -o StrictHostKeyChecking=no ec2-user@51.21.132.194 << 'EOF'
           unzip -o build.zip -d app
           cd app
           npm install
