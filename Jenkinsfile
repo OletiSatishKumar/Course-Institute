@@ -8,7 +8,7 @@ pipeline {
         ARTIFACT_NAME = "${APP_NAME}.zip"
         S3_BUCKET = 'myclashofclansbucket'
         S3_PATH = 'artifacts/'
-        EC2_HOST = '13.49.23.149'
+        EC2_HOST = '51.20.91.183'
         EC2_USER = 'ec2-user'
         PRIVATE_KEY_PATH = 'C:/Users/satis/Downloads/Deploy.pem'
     }
@@ -74,15 +74,39 @@ pipeline {
                 }
             }
         }
+
         stage('Deploy to EC2') {
             steps {
                 echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
-                    bat '''
+                    bat """
                     echo Connecting to EC2 and deploying the app...
 
-                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/ && unzip -o ~/%ARTIFACT_NAME% -d ~/app && cd ~/app && if ! command -v node > /dev/null; then curl -sL https://rpm.nodesource.com/setup_16.x | sudo bash - && sudo yum install -y nodejs; fi && npm install && nohup npm start > app.log 2>&1 &"
-                    '''
+                    ssh -o StrictHostKeyChecking=no -i "%PRIVATE_KEY_PATH%" %EC2_USER%@%EC2_HOST% "
+                        echo '📥 Downloading artifact from S3...'
+                        aws s3 cp s3://%S3_BUCKET%/%S3_PATH%%ARTIFACT_NAME% ~/
+
+                        echo '📂 Unzipping artifact...'
+                        unzip -o ~/%ARTIFACT_NAME% -d ~/app
+
+                        cd ~/app
+
+                        echo '📦 Checking and installing Node.js v22 if not installed...'
+                        if ! command -v node > /dev/null; then
+                            curl -sL https://rpm.nodesource.com/setup_22.x | sudo bash - &&
+                            sudo yum install -y nodejs;
+                        fi
+
+                        echo '📡 Node.js version:'
+                        node -v
+
+                        echo '📦 Installing dependencies...'
+                        npm install
+
+                        echo '🚀 Starting application in background...'
+                        nohup npm start > app.log 2>&1 &
+                    "
+                    """
                 }
             }
         }
