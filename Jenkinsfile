@@ -74,21 +74,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Cleanup Old Artifacts in S3') {
-            steps {
-                echo "🧹 Cleaning old artifacts in S3 (keep latest 5)..."
-                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops-creds']]) {
-                    bat '''
-                    for /f "skip=5 tokens=1,* delims=," %%a in ('aws s3api list-objects-v2 --bucket %S3_BUCKET% --prefix %S3_PATH% --query "reverse(sort_by(Contents,&LastModified))[*].Key" --output text') do (
-                        echo Deleting: %%a
-                        aws s3 rm s3://%S3_BUCKET%/%%a
-                    )
-                    '''
-                }
-            }
-        }
-
         stage('Deploy to EC2') {
             steps {
                 echo "🚀 Deploying ${ARTIFACT_NAME} to EC2 instance ${EC2_HOST}..."
